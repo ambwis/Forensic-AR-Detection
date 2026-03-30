@@ -2,21 +2,42 @@ import streamlit as st
 from ultralytics import YOLO
 import cv2
 from PIL import Image
+import numpy as np
 
-st.title("Forensic Investigation - AR Detection")
+# Page configuration
+st.set_page_config(page_title="Forensic AR Investigation", layout="wide")
 
-# Model load karen
-model = YOLO('weights/best.pt') 
+st.title("🔍 Digital Forensic Investigation using AR")
+st.write("Upload an image to detect forensic evidence (Bloodstains, Devices, Weapons, etc.)")
 
-# Image upload ka option
-source = st.radio("Select Source", ("Image Upload", "Live Stream (IP Webcam)"))
+# Load your model (best.pt)
+@st.cache_resource
+def load_model():
+    model = YOLO('best.pt')  # Make sure best.pt is in the same folder
+    return model
 
-if source == "Image Upload":
-    uploaded_file = st.file_uploader("Upload an image...", type=["jpg", "jpeg", "png"])
-    if uploaded_file is not None:
-        img = Image.open(uploaded_file)
-        results = model(img) # Detection
-        res_plotted = results[0].plot()
-        st.image(res_plotted, caption='Detected Objects', use_column_width=True)
+model = load_model()
 
-# Note: Live IP Webcam ke liye alag code (webrtc) chahiye hoga
+# Image Upload Logic
+uploaded_file = st.file_uploader("Choose a forensic image...", type=["jpg", "jpeg", "png"])
+
+if uploaded_file is not None:
+    # Convert uploaded file to image
+    image = Image.open(uploaded_file)
+    img_array = np.array(image)
+    
+    # Run Detection
+    results = model(img_array)
+    
+    # Show Results
+    res_plotted = results[0].plot()
+    st.image(res_plotted, caption='Detection Results', use_column_width=True)
+    
+    # Show counts of detected objects
+    st.subheader("Evidence Found:")
+    for result in results:
+        boxes = result.boxes
+        for box in boxes:
+            class_id = int(box.cls[0])
+            label = model.names[class_id]
+            st.write(f"✅ Detected: **{label}**")
